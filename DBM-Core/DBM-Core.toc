@@ -1,0 +1,23 @@
+﻿## Interface: 30300
+## Title:|cffffe00a<|r|cffff7d0aDBM Core|r|cffffe00a>|r |cff69ccf0For PServers|r
+## Notes: DBM Edited by Cheno and Xeralol for Private Servers
+## SavedVariablesPerCharacter: DBM_SavedOptions, DBT_SavedOptions
+## LoadOnDemand: 0
+## DefaultState: enabled
+## Author: Cheno, Xeralol
+## X-Website: http://www.deadlybossmods.com
+localization.en.lua
+localization.de.lua
+localization.cn.lua
+localization.ru.lua
+localization.fr.lua
+localization.tw.lua
+localization.kr.lua
+localization.es.lua
+DBT-Template.xml
+DBT.lua
+DBM-Core.lua
+DBM-Arrow.lua
+DBM-RangeCheck.lua
+DBM-BossHealth.lua
+DBM-BossHealth.xml
