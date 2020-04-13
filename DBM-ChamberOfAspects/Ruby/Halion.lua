@@ -35,11 +35,6 @@ local specWarnShadowConsumption		= mod:NewSpecialWarningRun(74792)
 local specWarnFieryConsumption		= mod:NewSpecialWarningRun(74562)
 local specWarnMeteorStrike			= mod:NewSpecialWarningMove(75952)
 local specWarnTwilightCutter		= mod:NewSpecialWarningSpell(77844)
-local specWarnCorporealitySlow		= mod:NewSpecialWarningSpellCorporeality(74832, "40%%, slow DPS!")
-local specWarnCorporealityStop		= mod:NewSpecialWarningSpellCorporeality(74833, "30%%, stop DPS!")
-
-local countdownMeteorStrike			= mod:NewCountdown(75952, "PlayCountdownOnMeteorStrike", false)
-local countdownTwilightCutter		= mod:NewCountdown(77846, "PlayCountdownOnTwilightCutter", false)
 
 local timerShadowConsumptionCD		= mod:NewNextTimer(25, 74792)
 local timerFieryConsumptionCD		= mod:NewNextTimer(25, 74562)
@@ -60,16 +55,11 @@ mod:AddBoolOption("AnnounceAlternatePhase", true, "announce")
 mod:AddBoolOption("WhisperOnConsumption", false, "announce")
 mod:AddBoolOption("SetIconOnConsumption", true)
 
-
 local warned_preP2 = false
 local warned_preP3 = false
 local lastflame = 0
 local lastshroud = 0
 local phases = {}
-local lastCorpAnnounce = "slow"
-local lastMeteor = 0
-local phase_transition = 0
-local transition_countdown
 
 function mod:LocationChecker()
 	if GetTime() - lastshroud < 6 then
@@ -104,8 +94,7 @@ function mod:OnCombatStart(delay)--These may still need retuning too, log i had 
 	lastflame = 0
 	lastshroud = 0
 	berserkTimer:Start(-delay)
-	timerMeteorCD:Start(21-delay)
-	countdownMeteorStrike:Schedule(21-5, 5)
+	timerMeteorCD:Start(20-delay)
 	timerFieryConsumptionCD:Start(15-delay)
 	timerFieryBreathCD:Start(10-delay)
 	updateHealthFrame(1)
@@ -184,24 +173,10 @@ function mod:SPELL_AURA_APPLIED(args)--We don't use spell cast success for actua
 		if self.Options.SetIconOnConsumption then
 			self:SetIcon(args.destName, 8)
 		end
-	elseif args.spellName == "Corporeality" then
-		if args:IsSpellID(74832) then
-			if self.Options["Corporeality 40%%, slow DPS!"] == true and lastCorpAnnounce == "slow" then
-				specWarnCorporealitySlow:Show()
-			elseif lastCorpAnnounce == "stop" then
-				lastCorpAnnounce = "slow"
-				specWarnCorporealitySlow:Show()
-			end
-		elseif args:IsSpellID(74833) then
-			if self.Options["Corporeality 30%%, stop DPS!"] == true and lastCorpAnnounce == "slow" then
-				lastCorpAnnounce = "stop"
-				specWarnCorporealityStop:Show()
-			end 
-		end
 	end
 end
 
-function mod:SPELL_AURA_REMOVED(args) 
+function mod:SPELL_AURA_REMOVED(args)
 	if args:IsSpellID(74792) then
 		if self.Options.SetIconOnConsumption then
 			self:SetIcon(args.destName, 0)
@@ -237,29 +212,22 @@ function mod:CHAT_MSG_MONSTER_YELL(msg)
 		updateHealthFrame(2)
 		timerFieryBreathCD:Cancel()
 		timerMeteorCD:Cancel()
-		countdownMeteorStrike:Cancel()
 		timerFieryConsumptionCD:Cancel()
 		warnPhase2:Show()
 		timerShadowBreathCD:Start(25)
 		timerShadowConsumptionCD:Start(20)--not exact, 15 seconds from tank aggro, but easier to add 5 seconds to it as a estimate timer than trying to detect this
 		if mod:IsDifficulty("heroic10") or mod:IsDifficulty("heroic25") then --These i'm not sure if they start regardless of drake aggro, or if it should be moved too.
-			timerTwilightCutterCD:Start(19)
-			countdownTwilightCutter:Schedule(19-5, 5)
-			print("30 sec cutter timer started")
+			timerTwilightCutterCD:Start(30)
 		else
-			timerTwilightCutterCD:Start(19)
-			countdownTwilightCutter:Schedule(19-5, 5)
-			print("35 sec cutter timer started")
+			timerTwilightCutterCD:Start(35)
 		end
 	elseif msg == L.Phase3 or msg:find(L.Phase3) then
 		self:SendSync("Phase3")
 	elseif msg == L.MeteorCast or msg:find(L.MeteorCast) then--There is no CLEU cast trigger for meteor, only yell
 		if not self.Options.AnnounceAlternatePhase then
 			warningMeteor:Show()
-			lastMeteor = GetTime()
 			timerMeteorCast:Start()--7 seconds from boss yell the meteor impacts.
 			timerMeteorCD:Start()
-			countdownMeteorStrike:Schedule(40-5, 5)
 		end
 		if mod:LatencyCheck() then
 			self:SendSync("Meteor")
@@ -271,14 +239,10 @@ function mod:CHAT_MSG_RAID_BOSS_EMOTE(msg)
 	if msg == L.twilightcutter or msg:find(L.twilightcutter) then
 			specWarnTwilightCutter:Schedule(5)
 		if not self.Options.AnnounceAlternatePhase then
-			if GetTime() - lastshroud < 6 then
-				warningTwilightCutter:Show()
-				timerTwilightCutterCast:Start()
-				timerTwilightCutter:Schedule(5)--Delay it since it happens 5 seconds after the emote
-				timerTwilightCutterCD:Schedule(15)
-				countdownTwilightCutter:Schedule(30-5, 5)
-			end
-			print("15 sec cutter timer started, raid boss emote")
+			warningTwilightCutter:Show()
+			timerTwilightCutterCast:Start()
+			timerTwilightCutter:Schedule(5)--Delay it since it happens 5 seconds after the emote
+			timerTwilightCutterCD:Schedule(15)
 		end
 		if mod:LatencyCheck() then
 			self:SendSync("TwilightCutter")
@@ -289,22 +253,16 @@ end
 function mod:OnSync(msg, target)
 	if msg == "TwilightCutter" then
 		if self.Options.AnnounceAlternatePhase then
-			if GetTime() - lastshroud < 6 then
-				warningTwilightCutter:Show()
-				timerTwilightCutterCast:Start()
-				timerTwilightCutter:Schedule(5)--Delay it since it happens 5 seconds after the emote
-				timerTwilightCutterCD:Schedule(15)
-				countdownTwilightCutter:Schedule(30-5, 5)
-			end
-			print("15 sec cutter timer started, on sync")
+			warningTwilightCutter:Show()
+			timerTwilightCutterCast:Start()
+			timerTwilightCutter:Schedule(5)--Delay it since it happens 5 seconds after the emote
+			timerTwilightCutterCD:Schedule(15)
 		end
 	elseif msg == "Meteor" then
 		if self.Options.AnnounceAlternatePhase then
 			warningMeteor:Show()
-			timerMeteorCD:Start()
-			lastMeteor = GetTime()
-			countdownMeteorStrike:Schedule(40-5, 5) --Fires at the same time as the normal meteor countdown, redundant?
 			timerMeteorCast:Start()
+			timerMeteorCD:Start()
 		end
 	elseif msg == "ShadowTarget" then
 		if self.Options.AnnounceAlternatePhase then
@@ -339,23 +297,7 @@ function mod:OnSync(msg, target)
 	elseif msg == "Phase3" then
 		updateHealthFrame(3)
 		warnPhase3:Show()
-		phase_transition = GetTime()
-		timerMeteorCD:Start(19) --These i'm not sure if they start regardless of drake aggro, or if it varies as well.
-		countdownMeteorStrike:Schedule(19-4, 4)
+		timerMeteorCD:Start(30) --These i'm not sure if they start regardless of drake aggro, or if it varies as well.
 		timerFieryConsumptionCD:Start(20)--not exact, 15 seconds from tank aggro, but easier to add 5 seconds to it as a estimate timer than trying to detect this
 	end
 end
-
-f = CreateFrame("Frame")
-f:SetScript("OnUpdate",function(args)
-	if GetTime() - phase_transition >= 14 and GetTime() - lastshroud < 3 and warned_preP3 == true then
-		--countdownMeteorStrike:Schedule(30, 5)
-		countdownMeteorStrike:Cancel()
-		timerMeteorCD:Cancel()
-	--elseif GetTime() - phase_transition == 18 and GetTime() - lastshroud > 3 and warned_preP3 == true and transition_countdown == false then
-		--countdownMeteorStrike:Schedule(0, 3)
-		--transition_countdown = true
-	elseif GetTime() - phase_transition >= 15 and GetTime() - lastshroud > 4 and warned_preP3 == true then 
-		countdownTwilightCutter.Cancel()
-	end
-end)

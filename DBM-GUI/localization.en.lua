@@ -5,7 +5,6 @@ local L = DBM_GUI_Translations
 L.MainFrame = "Deadly Boss Mods"
 
 L.TranslationBy 			= "Nitram, Tandanu & Tennberg"
-L.ImprovedBy                = "Improved for Dalaran-WoW by Cheno & Xeralol"
 
 L.TabCategory_Options	 	= "General Options"
 L.TabCategory_WOTLK 		= "Wrath of the Lich King"
@@ -139,5 +138,4 @@ L.SpamBlockNoShowAnnounce		= "Do not show announces or play warning sounds"
 L.SpamBlockNoSendAnnounce		= "Do not send announces to raid chat"
 L.SpamBlockNoSendWhisper		= "Do not send whispers to other players"
 L.SpamBlockNoSetIcon			= "Do not set icons on targets"
-L.SpamBlockNoCountdown			= "Do not play countdowns"
 

@@ -34,8 +34,6 @@ local timerBoilingBlood		= mod:NewNextTimer(15.5, 72441)
 local timerBloodNova		= mod:NewNextTimer(20, 73058)
 local timerCallBloodBeast	= mod:NewNextTimer(40, 72173)
 
-local countdownBloodBeast	= mod:NewCountdown(72173, "PlayCountdownOnCallBloodBeast", true)
-
 local enrageTimer			= mod:NewBerserkTimer(480)
 
 mod:AddBoolOption("RangeFrame", mod:IsRanged())
@@ -66,11 +64,8 @@ function mod:OnCombatStart(delay)
 	else
 		enrageTimer:Start(360-delay)
 	end
-	print("Delay")
-	print(delay)
-	timerCallBloodBeast:Start(30) --was "-delay"
-	countdownBloodBeast:Schedule(30-5, 5)
-	warnAddsSoon:Schedule(20)  --was "30-delay"
+	timerCallBloodBeast:Start(-delay)
+	warnAddsSoon:Schedule(30-delay)
 	timerBloodNova:Start(-delay)
 	timerRuneofBlood:Start(-delay)
 	timerBoilingBlood:Start(19-delay)
@@ -78,7 +73,7 @@ function mod:OnCombatStart(delay)
 	warned_preFrenzy = false
 	boilingBloodIcon = 8
 	if self.Options.RangeFrame then
-		DBM.RangeCheck:Show(13)
+		DBM.RangeCheck:Show(12)
 	end
 end
 
@@ -144,7 +139,6 @@ do
 				warnAdds:Show()
 				warnAddsSoon:Schedule(30)
 				timerCallBloodBeast:Start()
-				countdownBloodBeast:Schedule(40-5, 5)
 				lastBeast = time()
 				if self.Options.BeastIcons then
 					resetBeastIconState()
@@ -211,6 +205,6 @@ function mod:CHAT_MSG_MONSTER_YELL(msg)
 	if msg:find(L.PullAlliance, 1, true) then
 		timerCombatStart:Start()
 	elseif msg:find(L.PullHorde, 1, true) then
-		timerCombatStart:Start(81)
+		timerCombatStart:Start(99)
 	end
 end

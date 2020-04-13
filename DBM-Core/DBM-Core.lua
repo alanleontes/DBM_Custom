@@ -42,10 +42,10 @@
 --  Globals/Default Options  --
 -------------------------------
 DBM = {
-	Revision = ("$Revision: 9007 $"):sub(12, -3),
-	Version = "9.00",
-	DisplayVersion = "9.00-Dalaran", -- the string that is shown as version
-	ReleaseRevision = 9007 -- the revision of the latest stable version that is available (for /dbm ver2)
+	Revision = ("$Revision: 4442 $"):sub(12, -3),
+	Version = "4.52",
+	DisplayVersion = "4.52", -- the string that is shown as version
+	ReleaseRevision = 4442 -- the revision of the latest stable version that is available (for /dbm ver2)
 }
 
 DBM_SavedOptions = {}
@@ -107,7 +107,6 @@ DBM.DefaultOptions = {
 	DontSendBossAnnounces = false,
 	DontSendBossWhispers = false,
 	DontSetIcons = false,
-	DontPlayCountdowns = false,
 	LatencyThreshold = 250,
 	BigBrotherAnnounceToRaid = false,
 --	HelpMessageShown = false,
@@ -144,7 +143,6 @@ local loadModOptions
 local checkWipe
 local fireEvent
 local wowVersion = select(4, GetBuildInfo())
-local songPlayed = 0
 
 local enableIcons = true -- set to false when a raid leader or a promoted player has a newer version of DBM
 
@@ -798,7 +796,7 @@ SlashCmdList["DBMRANGE"] = function(msg)
 		DBM.RangeCheck:Hide()
 	else
 		local r = tonumber(msg)
-		if r and (r == 10 or r == 11 or r == 15 or r == 28 or r == 12 or r == 6 or r == 8 or r == 20 or r == 9 or r == 13) then
+		if r and (r == 10 or r == 11 or r == 15 or r == 28 or r == 12 or r == 6 or r == 8 or r == 20) then
 			DBM.RangeCheck:Show(r)
 		else
 			DBM.RangeCheck:Show(10)
@@ -901,15 +899,6 @@ do
 			sendSync("DBMv4-Pizza", ("%s\t%s"):format(time, text))
 		end
 		if sender then DBM:ShowPizzaInfo(text, sender) end
-		if not DBM.Options.DontPlayCountdowns then
-			if text == DBM_CORE_TIMER_PULL then
-				if time > 5 then self:Schedule(time - 5, PlaySoundFile, "Interface\\AddOns\\DBM-Core\\sounds\\new\\5.ogg") end
-				if time > 4 then self:Schedule(time - 4, PlaySoundFile, "Interface\\AddOns\\DBM-Core\\sounds\\new\\4.ogg") end
-				if time > 3 then self:Schedule(time - 3, PlaySoundFile, "Interface\\AddOns\\DBM-Core\\sounds\\new\\3.ogg") end
-				if time > 2 then self:Schedule(time - 2, PlaySoundFile, "Interface\\AddOns\\DBM-Core\\sounds\\new\\2.ogg") end
-				if time > 1 then self:Schedule(time - 1, PlaySoundFile, "Interface\\AddOns\\DBM-Core\\sounds\\new\\1.ogg") end
-			end
-		end
 	end
 
 	function DBM:AddToPizzaIgnore(name)
@@ -2164,7 +2153,7 @@ do
 		end
 		return DBM.Options.SpamBlockRaidWarning and type(msg) == "string" and (not not msg:match("^%s*%*%*%*")), ...
 	end
-	
+
 	ChatFrame_AddMessageEventFilter("CHAT_MSG_WHISPER_INFORM", filterOutgoing)
 	ChatFrame_AddMessageEventFilter("CHAT_MSG_BN_WHISPER_INFORM", filterOutgoing)
 	ChatFrame_AddMessageEventFilter("CHAT_MSG_WHISPER", filterIncoming)
@@ -2467,14 +2456,14 @@ end
 -- hard coded party-mod support, yay :)
 -- returns heroic for old instances that do not have a heroic mode (Naxx, Ulduar...)
 function bossModPrototype:GetDifficulty() 
-	--[[local _, instanceType, difficulty, _, _, playerDifficulty, isDynamicInstance = GetInstanceInfo()
+	local _, instanceType, difficulty, _, _, playerDifficulty, isDynamicInstance = GetInstanceInfo()
 	if instanceType == "raid" and isDynamicInstance then -- "new" instance (ICC)
 		if difficulty == 1 then -- 10 men
 			return playerDifficulty == 0 and "normal10" or playerDifficulty == 1 and "heroic10" or "unknown"
 		elseif difficulty == 2 then -- 25 men
 			return playerDifficulty == 0 and "normal25" or playerDifficulty == 1 and "heroic25" or "unknown"
 		end
-	else -- support for "old" instances]]--
+	else -- support for "old" instances
 		if GetInstanceDifficulty() == 1 then 
 			return (self.modId == "DBM-Party-WotLK" or self.modId == "DBM-Party-BC") and "normal5" or 
 			self.hasHeroic and "normal10" or "heroic10" 
@@ -2486,7 +2475,7 @@ function bossModPrototype:GetDifficulty()
 		elseif GetInstanceDifficulty() == 4 then 
 			return "heroic25" 
 		end
-	--end
+	end
 end 
 
 function bossModPrototype:IsDifficulty(...)
@@ -2581,9 +2570,6 @@ function bossModPrototype:IsHealer()
 			or (select(2, UnitClass("player")) == "PRIEST" and select(3, GetTalentTabInfo(3)) < 51)
 end
 
-function bossModPrototype:IsHunter()
-    return select(2, UnitClass("player")) == "HUNTER"
-end
 
 -------------------------
 --  Boss Health Frame  --
@@ -2783,57 +2769,6 @@ do
 	end	
 end
 
---------------------
---  Countdown Object  --
---------------------
-do
-    local countdownPrototype = {}
-    local mt = { __index = countdownPrototype }
-    function bossModPrototype:NewCountdown(spellId, optionName, optionDefault)
-		if DBM.Options.DontPlayCountdowns then
-			print("countdown disabled")
-			return
-		end
-        self.numSounds = self.numSounds and self.numSounds + 1 or 1
-        local obj = setmetatable(
-            {
-                option = optionName or DBM_CORE_AUTO_COUNTDOWN_OPTION_TEXT:format(spellId),
-                mod = self,
-            },
-            mt
-        )
-        if optionName == false then
-            obj.option = nil
-        else
-            self:AddBoolOption(obj.option, optionDefault, "misc")
-        end
-        return obj
-    end
-
-    function countdownPrototype:Play(counter)
-		if DBM.Options.DontPlayCountdowns then
-			return
-		end
-        if not counter then counter = 5 end
-        if counter <= 0 then return end
-
-        if not self.option or self.mod.Options[self.option] then
-            PlaySoundFile("Interface\\AddOns\\DBM-Core\\sounds\\new\\"..counter..".ogg")
-            self:Schedule(1, counter - 1)
-        end
-    end
-
-    function countdownPrototype:Schedule(t, ...)
-        return schedule(t, self.Play, self.mod, self, ...)
-    end
-
-    function countdownPrototype:Cancel(...)
-		if self ~= nil then
-			return unschedule(self.Play, self.mod, self, ...)
-		end
-    end 
-end
-
 ------------------------------
 --  Special Warning Object  --
 ------------------------------
@@ -2944,41 +2879,6 @@ do
 			self.localization.options[text] = DBM_CORE_AUTO_SPEC_WARN_OPTIONS[announceType]:format(spellId)
 		end
 		return obj
-	end
-	
-	local function newSpecialWarningHalion(self, announceType, spellId, percentage, stacks, optionDefault, optionName, noSound, runSound)
-		spellName = GetSpellInfo(spellId) or "unknown"
-		local text = "Corporeality "..percentage
-		local obj = setmetatable( -- todo: fix duplicate code
-			{
-				text = text,
-				announceType = announceType,
-				option = optionName or text,
-				mod = self,
-				sound = not noSound,
-			},
-			mt
-		)
-		if optionName == false then
-			obj.option = nil
-		else
-			self:AddBoolOption(optionName or text, true, "announce")		-- todo cleanup core code from that indexing type using options[text] is very bad!!! ;)
-		end
-		table.insert(self.specwarns, obj)
-		if announceType == "stack" then
-			self.localization.options[text] = DBM_CORE_AUTO_SPEC_WARN_OPTIONS[announceType]:format(stacks or 3, spellId)
-		else
-			if spellId == 74832 then
-				self.localization.options[text] = DBM_CORE_AUTO_SPEC_WARN_OPTIONS_HALION_40[announceType]:format(spellId)
-			elseif spellId == 74833 then
-				self.localization.options[text] = DBM_CORE_AUTO_SPEC_WARN_OPTIONS_HALION_30[announceType]:format(spellId)
-			end
-		end
-		return obj
-	end
-	
-	function bossModPrototype:NewSpecialWarningSpellCorporeality(text, percentage, optionDefault, ...)
-		return newSpecialWarningHalion(self, "spell", text, percentage, nil, optionDefault, ...)
 	end
 
 	function bossModPrototype:NewSpecialWarningSpell(text, optionDefault, ...)

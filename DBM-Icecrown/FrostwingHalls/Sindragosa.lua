@@ -49,8 +49,6 @@ local timerMysticBuffet			= mod:NewBuffActiveTimer(8, 70128)
 local timerNextMysticBuffet		= mod:NewNextTimer(6, 70128)
 local timerMysticAchieve		= mod:NewAchievementTimer(30, 4620, "AchievementMystic")
 
-local countdownBlisteringCold	= mod:NewCountdown(70123, "PlayCountdownOnBlisteringCold", true)
-
 local berserkTimer				= mod:NewBerserkTimer(600)
 
 local soundBlisteringCold = mod:NewSound(70123)
@@ -78,7 +76,6 @@ do
 		if DBM:GetRaidRank() > 0 then
 			table.sort(beaconIconTargets, sort_by_group)
 			local beaconIcons = 8
-			
 			for i, v in ipairs(beaconIconTargets) do
 				if self.Options.AnnounceFrostBeaconIcons then
 					SendChatMessage(L.BeaconIconSet:format(beaconIcons, UnitName(v)), "RAID")
@@ -227,7 +224,6 @@ function mod:SPELL_CAST_SUCCESS(args)
 		warnBlisteringCold:Show()
 		specWarnBlisteringCold:Show()
 		timerBlisteringCold:Start()
-        countdownBlisteringCold:Schedule(6-5, 5)
 		timerNextBlisteringCold:Start()
 		soundBlisteringCold:Play()
 	end
